@@ -1,6 +1,9 @@
 mod database;
+mod spotifyapi;
+
 use crate::database::Database;
 use crate::database::MusicRequest;
+use dotenv::dotenv;
 
 use actix_cors::Cors;
 use actix_web::{App, HttpResponse, HttpServer, Responder, delete, get, post, web};
@@ -17,15 +20,32 @@ use uuid::Uuid;
 #[post("/music")]
 async fn add_song(body: web::Json<String>) -> impl Responder {
     let data: String = body.into_inner();
-    if Database::contains(&data) {
+    let link_trimmed = data.clone().split("?").next().unwrap().to_string();
+    if Database::contains(&link_trimmed) {
         return HttpResponse::Conflict().body("Song link already found");
     }
+    let spotify_id = link_trimmed.split("/").last().unwrap().to_string();
+
+    // fetch full song details
+    let client = reqwest::Client::new();
+    dotenv().ok();
+    let client_id = std::env::var("SPOTIFY_CLIENT_ID").expect("No spotify client id supplied");
+    let client_secret =
+        std::env::var("SPOTIFY_CLIENT_SECRET").expect("No spotify client secret supplied");
+    let (song_name, image_link) =
+        spotifyapi::get_song_details(&client, &spotify_id, &client_id, &client_secret)
+            .await
+            .unwrap_or((String::from("Not found"), String::from("Not found")));
     Database::add_song(MusicRequest {
-        song_link: data,
-        id: Uuid::new_v4(),
+        song_link: link_trimmed,
+        uuid: Uuid::new_v4(),
+        spotify_id,
+        name: song_name,
+        image_link,
     });
     HttpResponse::Created().body("Succesfully added your song")
 }
+
 // API delete request
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
@@ -33,7 +53,7 @@ struct DeleteRequest {
     pub id: String,
     pub password: String,
 }
-use dotenv::dotenv;
+
 #[delete("/music")]
 async fn delete_song(body: web::Json<DeleteRequest>) -> impl Responder {
     let data: DeleteRequest = body.into_inner();

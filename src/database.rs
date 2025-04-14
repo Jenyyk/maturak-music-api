@@ -3,7 +3,10 @@ use uuid::Uuid;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MusicRequest {
     pub song_link: String,
-    pub id: Uuid,
+    pub uuid: Uuid,
+    pub spotify_id: String,
+    pub name: String,
+    pub image_link: String,
 }
 
 pub struct Database {
@@ -31,7 +34,7 @@ impl Database {
     pub fn delete_by_id(id: Uuid) -> Result<(), String> {
         let mut db = DATABASE.lock().unwrap();
         let original_length = &db.data.len();
-        db.data.retain(|song| song.id != id);
+        db.data.retain(|song| song.uuid != id);
         if original_length != &db.data.len() {
             return Ok(());
         }
