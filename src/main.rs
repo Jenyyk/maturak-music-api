@@ -67,7 +67,7 @@ async fn main() -> std::io::Result<()> {
             .service(delete_song)
             .wrap(cors)
     })
-    .bind(("127.0.0.1", 3030))
+    .bind(("0.0.0.0", 3030))
     .unwrap()
     .run()
     .await
