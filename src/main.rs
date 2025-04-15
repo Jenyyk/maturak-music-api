@@ -42,6 +42,7 @@ async fn add_song(body: web::Json<String>) -> impl Responder {
         spotify_id,
         name: song_name,
         image_link,
+        votes: 0,
     });
     HttpResponse::Created().body("Succesfully added your song")
 }
@@ -72,19 +73,47 @@ async fn delete_song(body: web::Json<DeleteRequest>) -> impl Responder {
     HttpResponse::NotFound().body("Song not found")
 }
 
+// API voting
+async fn upvote_song(body: web::Path<String>) -> impl Responder {
+    let data = body.into_inner();
+    let id: Uuid = match Uuid::parse_str(&data) {
+        Ok(uuid) => uuid,
+        _ => return HttpResponse::BadRequest().body("Invalid UUID for song"),
+    };
+
+    if Database::upvote_by_id(id).is_ok() {
+        return HttpResponse::Ok().body("Upvoted successfully");
+    }
+    HttpResponse::NotFound().body("Song not found")
+}
+async fn downvote_song(body: web::Path<String>) -> impl Responder {
+    let data = body.into_inner();
+    let id: Uuid = match Uuid::parse_str(&data) {
+        Ok(uuid) => uuid,
+        _ => return HttpResponse::BadRequest().body("Invalid UUID for song"),
+    };
+
+    if Database::downvote_by_id(id).is_ok() {
+        return HttpResponse::Ok().body("Upvoted successfully");
+    }
+    HttpResponse::NotFound().body("Song not found")
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         let cors = Cors::default()
             .allowed_origin("https://maturak26ab.cz")
             .allowed_origin("http://localhost:8000")
-            .allowed_methods(vec!["GET", "POST", "DELETE"])
+            .allowed_methods(vec!["GET", "POST", "DELETE", "PATCH"])
             .allowed_headers(vec!["Content-Type"]);
 
         App::new()
             .service(get_music)
             .service(add_song)
             .service(delete_song)
+            .service(web::resource("/music/upvote/{id}").route(web::patch().to(upvote_song)))
+            .service(web::resource("/music/downvote/{id}").route(web::patch().to(downvote_song)))
             .wrap(cors)
     })
     .bind(("0.0.0.0", 3030))

@@ -7,6 +7,7 @@ pub struct MusicRequest {
     pub spotify_id: String,
     pub name: String,
     pub image_link: String,
+    pub votes: i32,
 }
 
 pub struct Database {
@@ -39,6 +40,23 @@ impl Database {
             return Ok(());
         }
         Err(String::from("nothing deleted"))
+    }
+
+    pub fn upvote_by_id(id: Uuid) -> Result<(), String> {
+        let mut db = DATABASE.lock().unwrap();
+        if let Some(song) = db.data.iter_mut().find(|song| song.uuid == id) {
+            song.votes += 1;
+            return Ok(());
+        }
+        Err(String::from("nothing upvoted"))
+    }
+    pub fn downvote_by_id(id: Uuid) -> Result<(), String> {
+        let mut db = DATABASE.lock().unwrap();
+        if let Some(song) = db.data.iter_mut().find(|song| song.uuid == id) {
+            song.votes -= 1;
+            return Ok(());
+        }
+        Err(String::from("nothing downvoted"))
     }
 }
 
